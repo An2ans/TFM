@@ -1,0 +1,42 @@
+# tasks/Load/connect_local_duckdb.py
+
+import duckdb
+from pathlib import Path
+from prefect import task, get_run_logger
+from typing import Tuple, Any
+
+@task
+def connect_local_duckdb(ruta: str) -> Tuple[int, str, Any]:
+    """
+    Comprueba que la carpeta de `ruta` exista, luego:
+      - Si el archivo DuckDB no existe, lo crea.
+      - Se conecta al archivo DuckDB y devuelve (code, message, con).
+    Devuelve:
+      * code = 1 si se conectó o creó con éxito, 0 si error.
+      * message = descripción del resultado o error.
+      * con = DuckDBPyConnection (o None si hubo error).
+    """
+    logger = get_run_logger()
+    try:
+        db_path = Path(ruta)
+        parent_dir = db_path.parent
+        if not parent_dir.exists():
+            raise FileNotFoundError(f"La carpeta '{parent_dir}' no existe.")
+
+        if not db_path.exists():
+            # El archivo no existe: DuckDB.create automáticamente al conectar
+            con = duckdb.connect(str(db_path))
+            msg = f"✅ Archivo '{db_path.name}' creado con éxito en '{parent_dir}'."
+            logger.info(msg)
+            return 1, msg, con
+        else:
+            # Ya existe: solo conectar
+            con = duckdb.connect(str(db_path))
+            msg = f"✅ Conectado con éxito al archivo '{db_path.name}'."
+            logger.info(msg)
+            return 1, msg, con
+
+    except Exception as e:
+        err = f"❌ Error en connect_local_duckdb: {e}"
+        logger.error(err)
+        return 0, err, None

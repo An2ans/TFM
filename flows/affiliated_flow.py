@@ -3,59 +3,92 @@
 import os
 from pathlib import Path
 
-from prefect import flow, task, get_run_logger
+from prefect import flow, get_run_logger
 
-# Importar tareas custom
-from tasks.create_workqueue import create_work_queue
-from tasks.import_csv import import_csv
-from tasks.check_nulls import check_nulls
-from tasks.check_unique import check_unique
-from tasks.force_unique import force_unique
-from tasks.connect_local_duckdb import connect_local_duckdb
-from tasks.create_local_table import create_local_table
+# Tareas actualizadas
+from tasks.Extract.extract_csv import extract_csv
+from tasks.Quality.check_nulls import check_nulls_ge
+from tasks.Quality.check_unique import check_unique_ge
+from tasks.Transform.transform_col_unique import transform_col_unique
+from tasks.Transform.transform_cat_to_num import transform_cat_to_num
+from tasks.Load.connect_local_duckdb import connect_local_duckdb
+from tasks.Load.create_local_table import create_local_table
+from tasks.Load.update_local_table import update_local_table
+from tasks.Load.insert_added_date import insert_added_date
 
-# Constantes para rutas y nombres
+# Constantes
 AFFILIATED_PATH = Path(
     r"C:\Users\anton\OneDrive - UNIR\Equipo\TFM2\DATA\Affiliated_Outlets.csv"
 )
-PK_COLUMN = "Affiliated_Code"
-DB_PATH = Path.cwd() / "altadis_local.db"  # Archivo DuckDB en la raíz del proyecto
-TABLE_NAME = "Affiliated_Outlets"
+AFFILIATED_PK = "Affiliated_Code"
+DB_PATH = Path.cwd() / "altadis_local.db"
+TABLE_NAME = "affiliated_outlets"
+
 
 @flow(name="affiliated_flow")
 def affiliated_flow():
     logger = get_run_logger()
 
-    # 1) Crear o verificar Work Queue "default"
-    queue_name = create_work_queue("default")
+    # 1) Extraer CSV
+    df = extract_csv(str(AFFILIATED_PATH), ";")
 
-    # 2) Leer CSV de afiliados
-    #    import_csv lanzará FileNotFoundError si AFFILIATED_PATH no existe, deteniendo el flow.
-    df_aff = import_csv(str(AFFILIATED_PATH), ";")
-    logger.info(f"✅ CSV leído: {df_aff.shape[0]} filas, {df_aff.shape[1]} columnas")
+    # 2) Check Nulls
+    code_nulls, msg_nulls = check_nulls_ge(df)
+    logger.info(msg_nulls)
 
-    # 3) Comprobar nulos
-    nulls = check_nulls(df_aff)
-    if nulls:
-        logger.warning(f"⚠️ Columnas con nulos: {nulls}")
+    # 3) Check Unique
+    code_unique, msg_unique = check_unique_ge(df, AFFILIATED_PK)
+    logger.info(msg_unique)
+    if code_unique == 0:
+        code_force, df_mod, msg_force = transform_col_unique(df, AFFILIATED_PK)
+        logger.info(msg_force)
+        if code_force == 0:
+            raise RuntimeError("Aborting affiliated_flow: " + msg_force)
+        df = df_mod
+
+    # 4) Transformar columna categórica
+    code_cat, df_cat, mapping, msg_cat = transform_cat_to_num(df, "Location")
+    logger.info(msg_cat)
+    if code_cat == 0:
+        raise RuntimeError("Aborting affiliated_flow: " + msg_cat)
+    df = df_cat
+
+    # 5) Conectar a DuckDB
+    code_con, msg_con, con = connect_local_duckdb(str(DB_PATH))
+    logger.info(msg_con)
+    if code_con == 0 or con is None:
+        raise RuntimeError("Aborting affiliated_flow: " + msg_con)
+
+    # 6) Crear o actualizar tabla
+    code_tbl, msg_tbl, head_df = create_local_table(df, TABLE_NAME, con)
+    if code_tbl == 2:
+        # La tabla ya existe: actualizamos sus datos
+        logger.info(msg_tbl)
+        code_upd, msg_upd = update_local_table(df, TABLE_NAME, con)
+        logger.info(msg_upd)
+        if code_upd == 0:
+            raise RuntimeError("Aborting affiliated_flow: " + msg_upd)
+        # Insertar added_date tras actualizar
+        code_date, msg_date = insert_added_date(TABLE_NAME, con)
+        logger.info(msg_date)
+        if code_date == 0:
+            raise RuntimeError("Aborting affiliated_flow: " + msg_date)
+    elif code_tbl == 1:
+        # Se creó por primera vez
+        logger.info(msg_tbl)
+        # Mostrar primeras 5 filas
+        logger.info(f"Primeras 5 filas de '{TABLE_NAME}':\n{head_df}")
+        # Añadir added_date
+        code_date, msg_date = insert_added_date(TABLE_NAME, con)
+        logger.info(msg_date)
+        if code_date == 0:
+            raise RuntimeError("Aborting affiliated_flow: " + msg_date)
     else:
-        logger.info("✅ No se encontraron nulos")
+        # code_tbl == 0: error creando tabla
+        raise RuntimeError("Aborting affiliated_flow: " + msg_tbl)
 
-    # 4) Comprobar unicidad de la columna PK_COLUMN
-    is_unique = check_unique(df_aff, PK_COLUMN)
-    if not is_unique:
-        logger.warning(f"⚠️ Valores duplicados detectados en '{PK_COLUMN}', forzando unicidad")
-        df_aff = force_unique(df_aff, PK_COLUMN)
-        logger.info(f"✅ Unicidad forzada en '{PK_COLUMN}'")
-    else:
-        logger.info(f"✅ Todos los valores de '{PK_COLUMN}' son únicos")
+    logger.info("🎉 affiliated_flow completado con éxito.")
 
-    # 5) Conectar a DuckDB local
-    con = connect_local_duckdb(str(DB_PATH))
-
-    # 6) Crear y poblar tabla en DuckDB
-    create_local_table(df_aff, TABLE_NAME, con)
-    logger.info(f"🎉 Tabla '{TABLE_NAME}' lista en {DB_PATH}")
 
 if __name__ == "__main__":
     affiliated_flow()

@@ -4,55 +4,40 @@ import os
 from dotenv import load_dotenv
 from prefect import flow, get_run_logger
 
-# Importar task para validar work pool
-from tasks.connect_workpool import connect_work_pool
-
-# Importar subflows
+from tasks.Load.connect_prefect_workpool import connect_prefect_workpool
+from tasks.Load.finish_ETL import finish_ETL
 from flows.affiliated_flow import affiliated_flow
-# (En el futuro, podrías agregar otros: from flows.otro_flow import otro_flow)
 
-# Cargar variables de entorno desde .env
 load_dotenv()
-# Asegúrate de que .env contenga al menos:
-#   PREFECT_API_KEY=…
-#   PREFECT_WORKSPACE_ID=…
-#   PREFECT_DEFAULT_WORK_POOL_NAME=default-agent-pool
-#   PREFECT_DEFAULT_WORK_POOL_ID=8c879453-d19d-41aa-ae79-e91c1d8b59f4
 
 @flow(name="etl_orchestrator")
-def etl(selected_flow: str):
-    """
-    Orquestador principal sin retries, que:
-    1) Verifica el Work Pool.
-    2) Ejecuta únicamente el subflow solicitado.
-    """
+def etl_orchestrator():
     logger = get_run_logger()
 
-    # 1) Verificar que el Work Pool configurado exista
-    pool_id = connect_work_pool()
-    logger.info(f"→ Usaremos el Work Pool ID: {pool_id}")
+    # 1) Conectar al Work Pool
+    code_pool, msg_pool = connect_prefect_workpool()
+    logger.info(msg_pool)
+    if code_pool == 0:
+        raise RuntimeError("Aborting ETL: " + msg_pool)
 
-    # 2) Ejecutar el subflow seleccionado
-    if selected_flow.lower() == "affiliated":
-        logger.info("▶️ Iniciando `affiliated_flow` …")
-        affiliated_flow()
-        logger.info("✅ `affiliated_flow` completado.")
-    else:
-        msg = f"❌ Flow desconocido para ejecutar: '{selected_flow}'."
-        logger.error(msg)
-        raise ValueError(msg)
+    # 2) Ejecutar subflow 'affiliated_flow'
+    logger.info("▶️ Iniciando `affiliated_flow` …")
+    affiliated_flow()
+    logger.info("✅ `affiliated_flow` finalizado.")
+
+    # 3) Limpiar caché
+    code_fin, msg_fin = finish_ETL()
+    logger.info(msg_fin)
+    if code_fin == 0:
+        raise RuntimeError("Error en finish_ETL: " + msg_fin)
+
+    logger.info("🎉 ETL_orchestrator completado con éxito.")
+
 
 if __name__ == "__main__":
-    # Leer cuál flow queremos ejecutar (por defecto "affiliated")
-    selected = os.getenv("ETL_SELECTED_FLOW", "affiliated")
-    
-    # 1) Ejecutar localmente el flow orquestador
-    etl(selected)
-    
-    # 2) Registrar (deploy) el flow en Prefect Cloud, usando el Work Pool configurado
-    #    El nombre del pool se lee de la variable de entorno
+    etl_orchestrator()
     pool_name = os.getenv("PREFECT_DEFAULT_WORK_POOL_NAME")
-    etl.deploy(
+    etl_orchestrator.deploy(
         name="etl_orchestrator-deployment",
         work_pool_name=pool_name
     )

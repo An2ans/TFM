@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Tuple
 
-def force_unique(df: pd.DataFrame, col: str) -> pd.DataFrame:
+def transform_col_unique(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     Garantiza que los valores en df[col] sean únicos.
     Si aparece un duplicado, añade ' - N' donde N es el contador de duplicados.
