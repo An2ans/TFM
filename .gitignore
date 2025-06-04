@@ -1,2 +1,4 @@
 /.env
 /.vscode
+altadis_local.db
+duckdb.exe
