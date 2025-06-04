@@ -1,0 +1,42 @@
+{
+  "settings":{
+        "global": {
+          "LOCAL_DB_PATH": "C:\\Users\\anton\\Documents\\TFM\\altadis_local.db"
+
+        },
+        "flows": {
+          "affiliated": {
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Affiliated_Outlets.csv",
+            "TABLE_NAME": "affiliated_outlets",
+            "TABLE_ID": "1",
+            "TABLE_PK":"Affiliated_Code"
+          },
+          "product": {
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
+            "TABLE_NAME": "product",
+            "TABLE_ID": "2",
+            "TABLE_PK": "Product_Code",
+            "Quality":{
+              "Product_Code": "str",
+              "SIZE": "int",
+              "Format": "str"
+            }
+          },
+          "oos": {
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\OoSDay.csv",
+            "TABLE_NAME": "oos_day",
+            "TABLE_ID": "3",
+            "TABLE_PK": "oos_ID"
+          },
+          "delivery": {
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
+            "TABLE_NAME": "delivery_day",
+            "TABLE_ID": "4",
+            "TABLE_PK": "delivery_ID"
+          }
+
+
+        }
+  }
+}
+

@@ -1,34 +1,37 @@
 # tasks/Load/finish_ETL.py
 
 import shutil
+import os
+from typing import Tuple
 from pathlib import Path
 from prefect import task, get_run_logger
-from typing import Tuple
 
-@task(cache_key_fn=lambda *_: None)
+@task
 def finish_ETL() -> Tuple[int, str]:
     """
-    1) Elimina la caché local de Prefect (si existe).
-    2) Cierra cualquier recurso (DuckDB) que quede abierto: normalmente las tareas ya cierran su conexión.
-    3) Devuelve (1, mensaje de limpieza completa). En caso de error, (0, mensaje_error).
+    Elimina todas las carpetas '__pycache__' recursivamente a partir de la raíz del proyecto.
+    Devuelve:
+      (1, "Cache eliminado con éxito") si todo fue OK,
+      (0, "mensaje de error") si algo falló.
     """
     logger = get_run_logger()
-
     try:
-        # 1) Eliminar caché de Prefect (por defecto en ~/.prefect/cache)
-        cache_dir = Path.home() / ".prefect" / "cache"
-        if cache_dir.exists():
-            shutil.rmtree(cache_dir)
-            logger.info(f"✅ Caché Prefect eliminada: {cache_dir}")
+        # Partimos de la carpeta raíz del proyecto
+        root_dir = Path(__file__).parent.parent.parent  
 
-        # 2) No hay conexiones globales de DuckDB abiertas aquí (se cierran en la tarea create_local_table).
-        #    Si existiera alguna referencia global, habría que cerrarla manualmente.
+        removed = 0
+        # Recorremos todos los subdirectorios
+        for dirpath, dirnames, _ in os.walk(root_dir):
+            if "__pycache__" in dirnames:
+                cache_folder = Path(dirpath) / "__pycache__"
+                shutil.rmtree(cache_folder)
+                removed += 1
 
-        msg = "🎉 finalización del ETL completada (caché borrada)."
+        msg = f"✅ Cache limpios: {removed} carpetas '__pycache__' eliminadas."
         logger.info(msg)
         return 1, msg
 
     except Exception as e:
-        err = f"❌ Error en finish_ETL: {e}"
+        err = f"❌ Error al limpiar cache: {e}"
         logger.error(err)
         return 0, err
