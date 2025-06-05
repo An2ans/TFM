@@ -5,7 +5,7 @@ from typing import Tuple
 from prefect import task, get_run_logger
 
 @task
-def create_new_index(df: pd.DataFrame, col: str) -> Tuple[int, pd.DataFrame, str]:
+def create_new_index(df: pd.DataFrame, col: str, name: str = "index") -> Tuple[int, pd.DataFrame, str]:
     """
     Crea una nueva columna 'Index' basada en la columna `col` de df, garantizando unicidad:
       - Toma el valor original (ej. 123) y agrega un sufijo incremental (0,1,2...) para duplicados.
@@ -36,15 +36,15 @@ def create_new_index(df: pd.DataFrame, col: str) -> Tuple[int, pd.DataFrame, str
             return f"{base}{suffix}"
 
         # Crear la columna Index
-        df_mod["Index"] = df_mod[col].apply(make_index)
+        df_mod[name] = df_mod[col].apply(make_index)
 
         # Reordenar columnas para que 'Index' quede primero
         cols = df_mod.columns.tolist()
-        cols.remove("Index")
-        new_order = ["Index"] + cols
+        cols.remove(name)
+        new_order = [name] + cols
         df_mod = df_mod[new_order]
 
-        msg = "✅ Columna 'Index' creada correctamente como primera columna."
+        msg = "✅ Columna '{name}' creada correctamente como primera columna."
         return 1, df_mod, msg
 
     except Exception as e:

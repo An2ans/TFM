@@ -22,16 +22,28 @@
               "Format": "str"
             }
           },
+          "sales": {
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\SalesDay.csv",
+            "TABLE_NAME": "sales_day",
+            "TABLE_ID": "3",
+            "TABLE_PK": "sales_ID",
+            "Quality":{
+              "Product_Code": "str",
+              "SIZE": "int",
+              "Format": "str"
+            }
+          },
+
           "oos": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\OoSDay.csv",
             "TABLE_NAME": "oos_day",
-            "TABLE_ID": "3",
+            "TABLE_ID": "4",
             "TABLE_PK": "oos_ID"
           },
           "delivery": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
             "TABLE_NAME": "delivery_day",
-            "TABLE_ID": "4",
+            "TABLE_ID": "5",
             "TABLE_PK": "delivery_ID"
           }
 
