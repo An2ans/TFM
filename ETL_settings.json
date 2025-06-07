@@ -33,7 +33,6 @@
               "Format": "str"
             }
           },
-
           "oos": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\OoSDay.csv",
             "TABLE_NAME": "oos_day",
@@ -45,6 +44,21 @@
             "TABLE_NAME": "delivery_day",
             "TABLE_ID": "5",
             "TABLE_PK": "delivery_ID"
+          },
+          "calendar":{
+            "SOURCE_PATH":"C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\holidays_2015.json",
+            "TABLE_NAME": "calendar",
+            "TABLE_ID": "",
+            "TABLE_PK": "Day",
+            "FECHA_INICIAL": "01-01-2015",
+            "FECHA_FINAL": "31-12-2015",
+            "JSON_DF":{
+              "Day": "date",
+              "Name": "str",
+              "Type": "str",
+              "Region": "str",
+              "Comments": "str"
+            }
           }
 
 

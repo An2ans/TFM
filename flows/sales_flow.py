@@ -1,80 +1,85 @@
 # flows/sales_flow.py
 
 from pathlib import Path
-
+import pandas as pd
 from prefect import flow, get_run_logger
 
 # -------- Importar tareas y ajustes ----------
 from tasks.Extract.extract_csv import extract_csv
-from tasks.Quality.check_nulls import check_nulls_ge
+from tasks.Quality.check_nulls import check_nulls
 from tasks.Transform.create_new_index import create_new_index
 from tasks.Transform.transform_date import transform_date
 from tasks.Transform.sort_dates import sort_dates
-from tasks.Quality.check_unique import check_unique_ge
+from tasks.Quality.check_unique import check_unique
+from tasks.Quality.error_handling import error_handling
 
 @flow(name="sales_flow")
-def sales_flow(settings: dict, LOCAL_DB_PATH: str):
+def sales_flow(settings: dict, LOCAL_DB_PATH: str) -> pd.DataFrame:
     """
-    Sales Flow: ET parte (Extract y Transform/Quality) para procesar datos de ventas.
+    Sales Flow siguiendo el patrón de control por pasos:
+      - Mientras task_code == 0:
+          Ejecuta cada tarea en orden, actualiza (task_code, task_msg, df)
+      - Post-bucle: si task_code != 0 → error_handling, si no → éxito.
     """
-
-    # 0) Extraer ajustes desde el diccionario `settings`
-    SOURCE_PATH = Path(settings["SOURCE_PATH"])
-    TABLE_NAME  = settings["TABLE_NAME"]
-    TABLE_ID    = settings["TABLE_ID"]
-    TABLE_PK    = settings["TABLE_PK"]
-    QUALITY     = settings.get("Quality", {})
 
     logger = get_run_logger()
 
-    # -----------------------------
-    # 1) [Extract] Cargar CSV
-    # -----------------------------
-    df = extract_csv(str(SOURCE_PATH), ";")
-    logger.info(f"✅ Etapa Extract: CSV cargado desde '{SOURCE_PATH}' con {len(df)} filas y {len(df.columns)} columnas.")
+    # 0) Parámetros de configuración
+    SOURCE_PATH = Path(settings["SOURCE_PATH"])
+    TABLE_PK    = settings["TABLE_PK"]
 
-    # ----------------------------------------------------
-    # 2) [Transform / Data Quality] Comprobar nulos
-    # ----------------------------------------------------
-    code_nulls, msg_nulls = check_nulls_ge(df)
-    logger.info(f"✅ Etapa Transform/Data Quality: {msg_nulls}")
-    if code_nulls != 1:
-        raise RuntimeError(f"Aborting sales_flow: {msg_nulls}")
+    # Variables de control
+    task_code, task_msg = 0, ""
+    df = pd.DataFrame()
 
-    # ----------------------------------------------------
-    # 3) [Transform] Crear nuevo índice basado en Sales_DAY y PK
-    # ----------------------------------------------------
-    #    Crea columna "Index" como nuevo índice único
-    code_idx, df, msg_idx = create_new_index(df, "Sales_DAY")
-    logger.info(f"✅ Etapa Transform: {msg_idx}")
-    if code_idx == 0:
-        raise RuntimeError(f"Aborting sales_flow: {msg_idx}")
+    # Ejecución secuencial de tareas
+    while task_code == 0:
+        # 1) Extract CSV → (code, msg, df)
+        code_01, msg_01, df = extract_csv(str(SOURCE_PATH), ";")
+        task_code, task_msg = code_01, msg_01
+        logger.info(msg_01)
+        if task_code != 0:
+            break
 
-    # ----------------------------------------------------
-    # 4) [Transform] Convertir columna de fecha a datetime
-    # ----------------------------------------------------
-    code_date, df, msg_date = transform_date(df, "Sales_DAY", "YYYYMMDD")
-    logger.info(f"✅ Etapa Transform: {msg_date}")
-    if code_date == 0:
-        raise RuntimeError(f"Aborting sales_flow: {msg_date}")
+        # 2) Check nulls → (code, msg)
+        code_02, msg_02 = check_nulls(df)
+        task_code, task_msg = code_02, msg_02
+        logger.info(msg_02)
+        if task_code != 0:
+            break
 
-    # ----------------------------------------------------
-    # 5) [Transform] Ordenar por fecha (Sales_DAY) ascendente
-    # ----------------------------------------------------
-    code_sort, df, msg_sort = sort_dates(df, "Sales_DAY", "ASC")
-    logger.info(f"✅ Etapa Transform: {msg_sort}")
-    if code_sort == 0:
-        raise RuntimeError(f"Aborting sales_flow: {msg_sort}")
+        # 3) Create new index on "Sales_DAY" → (code, msg, df)
+        code_03, msg_03, df = create_new_index(df, "Sales_DAY", TABLE_PK)
+        task_code, task_msg = code_03, msg_03
+        logger.info(msg_03)
+        if task_code != 0:
+            break
 
-    # ----------------------------------------------------
-    # 6) [Transform / Data Quality] Comprobar unicidad de PK
-    # ----------------------------------------------------
-    code_unique, msg_unique = check_unique_ge(df, TABLE_PK)
-    logger.info(f"✅ Etapa Transform/Data Quality: {msg_unique}")
-    if code_unique == 0:
-        raise RuntimeError(f"Aborting sales_flow: {msg_unique}")
+        # 4) Transform date "Sales_DAY" from YYYYMMDD → (code, msg, df)
+        code_04, msg_04, df = transform_date(df, "Sales_DAY", "YYYYMMDD")
+        task_code, task_msg = code_04, msg_04
+        logger.info(msg_04)
+        if task_code != 0:
+            break
 
-    logger.info("🎉 ET (Extract+Transform) de sales_flow completado con éxito.")
+        # 5) Sort dates ascending → (code, msg, df)
+        code_05, msg_05, df = sort_dates(df, "Sales_DAY", "ASC")
+        task_code, task_msg = code_05, msg_05
+        logger.info(msg_05)
+        if task_code != 0:
+            break
 
-    # Aquí terminaría la parte de ET; la carga (Load) vendrá después.
+        # 6) Check unique on TABLE_PK → (code, msg)
+        code_06, msg_06 = check_unique(df, TABLE_PK)
+        task_code, task_msg = code_06, msg_06
+        logger.info(msg_06)
+        # check_unique nunca aborta con código 0, así que aquí rompemos
+        break
 
+    # Post-bucle: manejo de errores o éxito
+    if task_code != 0:
+        error_handling(task_code, task_msg, df)
+        return pd.DataFrame()
+
+    logger.info("🎉 Sales_flow completado con éxito.")
+    return df

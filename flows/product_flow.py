@@ -5,8 +5,8 @@ from prefect import flow, get_run_logger
 
 # Tareas actualizadas
 from tasks.Extract.extract_csv import extract_csv
-from tasks.Quality.check_nulls import check_nulls_ge
-from tasks.Quality.check_unique import check_unique_ge
+from tasks.Quality.check_nulls import check_nulls
+from tasks.Quality.check_unique import check_unique
 from tasks.Quality.check_datatypes import check_datatypes
 from tasks.Transform.transform_col_unique import transform_col_unique
 from tasks.Load.connect_local_duckdb import connect_local_duckdb

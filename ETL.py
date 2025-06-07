@@ -8,6 +8,9 @@ from tasks.Load.connect_prefect_workpool import connect_prefect_workpool
 from tasks.Load.finish_ETL import finish_ETL
 from flows.affiliated_flow import affiliated_flow
 from flows.product_flow import product_flow
+from flows.sales_flow import sales_flow
+from flows.calendar_flow import calendar_flow
+
 
 # Incorporamos las variables de entorno .env
 load_dotenv()
@@ -37,25 +40,32 @@ def etl_orchestrator():
         raise RuntimeError("Aborting ETL: " + msg_pool)
 
     # 2) Ejecutar subflow 'affiliated_flow'con sus settings
-    logger.info("▶️ Iniciando `affiliated_flow` …")
-    affiliated_flow(flow_settings["affiliated"], LOCAL_DB_PATH)
-    logger.info("✅ `affiliated_flow` finalizado.")
+    #logger.info("▶️ Iniciando `affiliated_flow` …")
+    #affiliated_flow(flow_settings["affiliated"], LOCAL_DB_PATH)
+    #logger.info("✅ `affiliated_flow` finalizado.")
 
     # 3) Ejecutar subflow 'product_flow'con sus settings
-    logger.info("▶️ Iniciando `product_flow` …")
-    product_flow(flow_settings["product"], LOCAL_DB_PATH)
-    logger.info("✅ `product_flow` finalizado.")
+    #logger.info("▶️ Iniciando `product_flow` …")
+    #product_flow(flow_settings["product"], LOCAL_DB_PATH)
+    #logger.info("✅ `product_flow` finalizado.")
 
+    # 4) Ejecutar subflow 'sales_flow'con sus settings
+    logger.info("▶️ Iniciando `sales_flow` …")
+    sales_flow(flow_settings["sales"], LOCAL_DB_PATH)
+    logger.info("✅ `sales_flow` finalizado.")
 
-    # 4) Limpiar caché
+    # ) Ejecutamos subflow calendar_flow 
+    logger.info("▶️ Iniciando `calendar_flow` …")
+    calendar_flow(flow_settings["calendar"], LOCAL_DB_PATH)
+    logger.info("✅ `calendar_flow` finalizado.")
+
+    # ) Limpiar caché
     code_fin, msg_fin = finish_ETL()
     logger.info(msg_fin)
-    if code_fin == 0:
-        raise RuntimeError("Error en finish_ETL: " + msg_fin)
 
     logger.info("🎉 ETL_orchestrator completado con éxito.")
 
 
 if __name__ == "__main__":
     etl_orchestrator()
-    etl_orchestrator.serve()
+    #etl_orchestrator.serve()
