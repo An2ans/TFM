@@ -18,7 +18,7 @@ def update_local_table(df: pd.DataFrame, table_name: str, con: duckdb.DuckDBPyCo
             f"SELECT table_name FROM information_schema.tables WHERE table_name = '{table_name}'"
         ).fetchdf()
         if tbls.empty:
-            return 0, f"❌ La tabla '{table_name}' no existe."
+            return 1, f"❌ La tabla '{table_name}' no existe."
 
         # Borrar todos los registros
         con.execute(f"DELETE FROM {table_name}")
@@ -26,7 +26,7 @@ def update_local_table(df: pd.DataFrame, table_name: str, con: duckdb.DuckDBPyCo
         # Insertar los nuevos datos
         con.register("temp_df_update", df)
         con.execute(f"INSERT INTO {table_name} SELECT * FROM temp_df_update")
-        return 1, f"✅ Datos de la tabla '{table_name}' actualizados."
+        return 0, f"✅ Datos de la tabla '{table_name}' actualizados."
 
     except Exception as e:
-        return 0, f"❌ Error actualizando datos de '{table_name}': {e}"
+        return 9, f"❌ Error actualizando datos de '{table_name}': {e}"

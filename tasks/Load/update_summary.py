@@ -54,7 +54,7 @@ def update_summary(
             (table_id, table_name, row_count, flow_name, now_iso)
         )
 
-        return 1, f"✅ 'tables_summary' actualizado para table_id='{table_id}'."
+        return 0, f"✅ 'tables_summary' actualizado para table_id='{table_id}'."
 
     except Exception as e:
-        return 0, f"❌ Error en update_summary: {e}"
+        return 1, f"❌ Error en update_summary: {e}"

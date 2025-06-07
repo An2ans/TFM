@@ -8,13 +8,13 @@
           "affiliated": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Affiliated_Outlets.csv",
             "TABLE_NAME": "affiliated_outlets",
-            "TABLE_ID": "1",
+            "TABLE_ID": 1,
             "TABLE_PK":"Affiliated_Code"
           },
           "product": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
             "TABLE_NAME": "product",
-            "TABLE_ID": "2",
+            "TABLE_ID": 2,
             "TABLE_PK": "Product_Code",
             "Quality":{
               "Product_Code": "str",
@@ -25,7 +25,7 @@
           "sales": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\SalesDay.csv",
             "TABLE_NAME": "sales_day",
-            "TABLE_ID": "3",
+            "TABLE_ID": 3,
             "TABLE_PK": "sales_ID",
             "Quality":{
               "Product_Code": "str",
@@ -36,19 +36,19 @@
           "oos": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\OoSDay.csv",
             "TABLE_NAME": "oos_day",
-            "TABLE_ID": "4",
+            "TABLE_ID": 4,
             "TABLE_PK": "oos_ID"
           },
           "delivery": {
-            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
+            "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\DeliveryDay.csv",
             "TABLE_NAME": "delivery_day",
-            "TABLE_ID": "5",
+            "TABLE_ID": 5,
             "TABLE_PK": "delivery_ID"
           },
           "calendar":{
             "SOURCE_PATH":"C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\holidays_2015.json",
             "TABLE_NAME": "calendar",
-            "TABLE_ID": "",
+            "TABLE_ID": 6,
             "TABLE_PK": "Day",
             "FECHA_INICIAL": "01-01-2015",
             "FECHA_FINAL": "31-12-2015",
@@ -58,10 +58,20 @@
               "Type": "str",
               "Region": "str",
               "Comments": "str"
+            },
+            "QUALITY":{
+              "Day": "datetime",
+              "Week_day": "int",
+              "Week_day_name": "str",
+              "Month": "int",
+              "Month_name": "str",
+              "Year": "int",
+              "Name": "str",
+              "Type": "str",
+              "Region": "str",
+              "Comments": "str"
             }
           }
-
-
         }
   }
 }

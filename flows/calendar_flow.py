@@ -3,6 +3,7 @@
 from pathlib import Path
 import pandas as pd
 from prefect import flow, get_run_logger
+from typing import Tuple
 
 # Tareas necesarias
 from tasks.Extract.extract_json import extract_json
@@ -10,9 +11,10 @@ from tasks.Transform.transform_date import transform_date
 from tasks.Transform.create_calendar import create_calendar
 from tasks.Transform.join_tables import join_tables
 from tasks.Quality.error_handling import error_handling
+from tasks.Quality.check_datatypes import check_datatypes
 
 @flow(name="calendar_flow")
-def calendar_flow(settings: dict, DB_PATH: str) -> pd.DataFrame:
+def calendar_flow(settings: dict) -> Tuple[int, str, pd.DataFrame]:
     """
     Genera un calendario y lo une con datos de festivos extraídos de un JSON.
     Patrón de ejecución por pasos con:
@@ -32,6 +34,10 @@ def calendar_flow(settings: dict, DB_PATH: str) -> pd.DataFrame:
     FI        = settings["FECHA_INICIAL"]  # "DD-MM-YYYY"
     FF        = settings["FECHA_FINAL"]    # "DD-MM-YYYY"
     TABLE_PK  = settings["TABLE_PK"]
+    TABLE_ID  = settings["TABLE_ID"]
+    TABLE_NAME= settings["TABLE_NAME"]
+    QUALITY= settings["QUALITY"]
+
 
     # Variables de control
     task_code, task_msg = 0, ""
@@ -64,13 +70,16 @@ def calendar_flow(settings: dict, DB_PATH: str) -> pd.DataFrame:
         code_04, msg_04, df = join_tables(TABLE_PK, "FULL", df_cal, df)
         task_code, task_msg = code_04, msg_04
         logger.info(msg_04)
-        # Si falla, salimos; si no, ya tenemos df final
+
+        #5) Quality check
+        code_05, msg_05, df = check_datatypes(df, QUALITY )
+        task_code, task_msg = code_05, msg_05
         break
 
     # Post-bucle: manejo único de errores o éxito
     if task_code != 0:
         error_handling(task_code, task_msg, df)
-        return pd.DataFrame()
+        raise RuntimeError(f"Abortado calendar_flow")
     else:
         logger.info("🎉 calendar_flow completado con éxito.")
-        return df
+        return (TABLE_ID, TABLE_NAME, df)

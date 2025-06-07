@@ -84,6 +84,7 @@ def create_calendar(
 
         try:
             calendar = pd.DataFrame(records)
+            calendar["Day"] = pd.to_datetime(calendar["Day"])
         except Exception as e:
             return 9, f"❌ Error al convertir a DataFrame: {e}", pd.DataFrame()
 
