@@ -4,7 +4,7 @@ import pandas as pd
 import duckdb
 from datetime import datetime
 from typing import Tuple
-from prefect import task
+from prefect import task, context
 from datetime import timezone
 
 @task(cache_key_fn=lambda *_: None)
@@ -24,7 +24,8 @@ def update_summary(
     """
     try:
         row_count = df.shape[0]
-        flow_name = "affiliated_flow"
+        ctx = context.FlowRunContext.get()
+        flow_name = ctx.flow.name
         now_iso   = datetime.now(timezone.utc).isoformat()
 
         # Crear la tabla si no existe

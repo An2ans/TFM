@@ -12,9 +12,12 @@ from tasks.Transform.transform_date import transform_date
 from tasks.Transform.sort_dates import sort_dates
 from tasks.Quality.check_unique import check_unique
 from tasks.Quality.error_handling import error_handling
+from tasks.Load.connect_local_duckdb import connect_local_duckdb
+from tasks.Load.create_local_table import create_local_table
+from tasks.Load.update_summary import update_summary
 
 @flow(name="oos_flow")
-def oos_flow(settings: dict) -> Tuple[int, str, pd.DataFrame]:
+def oos_flow(settings: dict, LOCAL_DB_PATH:str) -> Tuple[int, str]:
     """
     oos_flow: idéntico a delivery_flow, pero para Out-Of-Stock data.
     """
@@ -70,11 +73,30 @@ def oos_flow(settings: dict) -> Tuple[int, str, pd.DataFrame]:
         code_06, msg_06 = check_unique(df, TABLE_PK)
         task_code, task_msg = code_06, msg_06
         logger.info(msg_06)
+
+        # 7) Conectar DuckDB
+        code_07, msg_07, con = connect_local_duckdb(LOCAL_DB_PATH)
+        task_code, task_msg = code_07, msg_07
+        logger.info(msg_07)
+        if task_code != 0:
+            break
+
+        # 8) Crear tabla
+        code_08, msg_08, _ = create_local_table(df, TABLE_NAME, con)
+        task_code, task_msg = code_08, msg_08
+        logger.info(msg_08)
+        if task_code != 0:
+            break
+
+        # 9) Update summary
+        code_09, msg_09 = update_summary(df, TABLE_ID, TABLE_NAME, con)
+        task_code, task_msg = code_09, msg_09
+        logger.info(msg_09)
         break
+
 
     if task_code != 0:
         error_handling(task_code, task_msg, df)
         raise RuntimeError(f"Abortado oos_flow")
     else:
-        logger.info("🎉 oos_flow completado con éxito.")
-        return TABLE_ID, TABLE_NAME, df
+        return (0, f"✅ oos_flow completado! Tabla {TABLE_ID} - {TABLE_NAME} cargada con éxito en Local ")
