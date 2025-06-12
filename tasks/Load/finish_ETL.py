@@ -29,9 +29,9 @@ def finish_ETL() -> Tuple[int, str]:
 
         msg = f"✅ Cache limpios: {removed} carpetas '__pycache__' eliminadas."
         logger.info(msg)
-        return 1, msg
+        return 0, msg
 
     except Exception as e:
         err = f"❌ Error al limpiar cache: {e}"
         logger.error(err)
-        return 0, err
+        return 1, err

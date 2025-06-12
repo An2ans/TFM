@@ -49,9 +49,9 @@ def etl_orchestrator():
     #logger.info("✅ `affiliated_flow` finalizado.")
 
     # 3) Ejecutar subflow 'product_flow'con sus settings
-    #logger.info("▶️ Iniciando `product_flow` …")
-    #product_flow(flow_settings["product"], LOCAL_DB_PATH)
-    #logger.info("✅ `product_flow` finalizado.")
+    logger.info("▶️ Iniciando `product_flow` …")
+    product_code, product_msg = product_flow(flow_settings["product"], LOCAL_DB_PATH)
+    logger.info(product_msg)
 
     # 4) Ejecutar subflow 'sales_flow'con sus settings
     logger.info("▶️ Iniciando `sales_flow` …")
