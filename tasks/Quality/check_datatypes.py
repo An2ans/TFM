@@ -9,7 +9,7 @@ from typing import Tuple, Any, Dict
 def check_datatypes(
     df: pd.DataFrame,
     expected_types: Dict[str, str]
-) -> Tuple[int, pd.DataFrame, str]:
+) -> Tuple[int, str, pd.DataFrame]:
     """
     Verifica que `df` tenga exactamente las columnas y tipos indicados en `expected_types`,
     en el orden especificado. Si faltan o sobran columnas, reporta error. Si el orden es distinto,
@@ -111,7 +111,7 @@ def check_datatypes(
                 f"Estructura de columnas:\n{dtypes_str}"
             )
 
-        return 1, df, msg
+        return 0, msg, df
 
     except Exception as e:
         head_str = df.head(5).to_string(index=False)
@@ -121,4 +121,4 @@ def check_datatypes(
             f"DataFrame.head(5):\n{head_str}\n\n"
             f"Estructura de columnas:\n{dtypes_str}"
         )
-        return 0, df, full_msg
+        return 9, full_msg, df

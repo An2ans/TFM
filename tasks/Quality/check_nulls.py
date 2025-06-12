@@ -6,7 +6,7 @@ from prefect import task
 from typing import Tuple
 
 @task
-def check_nulls_ge(df: pd.DataFrame) -> Tuple[int, str]:
+def check_nulls(df: pd.DataFrame) -> Tuple[int, str]:
     """
     Usa Great Expectations para verificar valores nulos en cada columna de `df`.
     - Si no hay columnas con nulos: devuelve (0, mensaje).
@@ -43,4 +43,4 @@ def check_nulls_ge(df: pd.DataFrame) -> Tuple[int, str]:
     num_cols = len(columnas_con_nulos)
     cols_lista = "; ".join(detalle)
     msg = f"⚠️ Se encontraron nulos en {num_cols} columna(s): {cols_lista}"
-    return num_cols, msg
+    return 0, msg

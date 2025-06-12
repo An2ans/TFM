@@ -20,19 +20,20 @@ def connect_local_duckdb(ruta: str) -> Tuple[int, str, Any]:
         db_path = Path(ruta)
         parent_dir = db_path.parent
         if not parent_dir.exists():
-            raise FileNotFoundError(f"La carpeta '{parent_dir}' no existe.")
+            msg = f"La carpeta '{parent_dir}' no existe."
+            return 1, msg, None
 
         if not db_path.exists():
             # El archivo no existe: DuckDB.create automáticamente al conectar
             con = duckdb.connect(str(db_path))
             msg = f"✅ Archivo '{db_path.name}' creado con éxito en '{parent_dir}'."
-            return 1, msg, con
+            return 0, msg, con
         else:
             # Ya existe: solo conectar
             con = duckdb.connect(str(db_path))
             msg = f"✅ Conectado con éxito al archivo '{db_path.name}'."
-            return 1, msg, con
+            return 0, msg, con
 
     except Exception as e:
         err = f"❌ Error en connect_local_duckdb: {e}"
-        return 0, err, None
+        return 1, err, None
