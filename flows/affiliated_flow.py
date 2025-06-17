@@ -1,82 +1,193 @@
 # flows/affiliated_flow.py
 
 from pathlib import Path
+import pandas as pd
 from prefect import flow, get_run_logger
 
-# Tareas actualizadas
+# Importar las tareas usadas
 from tasks.Extract.extract_csv import extract_csv
+from tasks.Transform.rename_col import rename_col
+from tasks.Transform.group_by import group_by
+from tasks.Transform.join_tables import join_tables
+from tasks.Transform.transform_cat_to_num import transform_cat_to_num
 from tasks.Quality.check_nulls import check_nulls
 from tasks.Quality.check_unique import check_unique
-from tasks.Transform.transform_col_unique import transform_col_unique
-from tasks.Transform.transform_cat_to_num import transform_cat_to_num
+from tasks.Quality.check_datatypes import check_datatypes
 from tasks.Load.connect_local_duckdb import connect_local_duckdb
 from tasks.Load.create_local_table import create_local_table
-from tasks.Load.update_local_table import update_local_table
 from tasks.Load.update_summary import update_summary
+from tasks.Quality.error_handling import error_handling
 
 @flow(name="affiliated_flow")
 def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
+    """
+    Flujo para procesar la tabla de 'affiliated':
+    Pasos:
+      1) extract_csv(SOURCE_PATH, ";")
+      2) rename_col(df, {...})
+      3) extract_csv(PC_PATH, ";")
+      4) group_by(df_cp, "cp", AGG_MAP)
+      5) join_tables("cp", "FULL", df, df_cp)
+      6) transform_cat_to_num(df, "Location")
+      7) transform_cat_to_num(df, "Tam_m2", Tam_map)
+      8) check_nulls(df)
+      9) check_unique(df, TABLE_PK)
+     10) check_datatypes(df, QUALITY)
+     11) connect_local_duckdb(LOCAL_DB_PATH)
+     12) create_local_table(df, TABLE_NAME, con)
+     13) update_summary(df, TABLE_ID, TABLE_NAME, con)
+    Si en algún paso code != 0, se aborta y se llama a error_handling.
+    Si todo OK, al final devuelve (TABLE_ID, TABLE_NAME, df).
+    """
+    logger = get_run_logger()
 
-    # 1) Extraer 'settings' 
+    # 0) Extraer de settings
     SOURCE_PATH = Path(settings["SOURCE_PATH"])
+    PC_PATH     = Path(settings["PC_PATH"])
     TABLE_NAME  = settings["TABLE_NAME"]
     TABLE_ID    = settings["TABLE_ID"]
     TABLE_PK    = settings["TABLE_PK"]
+    QUALITY     = settings.get("QUALITY", {})
+    AGG_MAP     = settings.get("AGG_MAP", {})   # dict para group_by en df_cp
+    
+    
+    Tam_map     = {              
+        "<2m2": 1,
+        "2-5m2":2,
+        "5-10m2":3,
+        "10-20m2":4,
+        "20-30m2":5,
+        ">20m2":6,
+        ">30m2":7,
+        "N.D.":0
+    } # dict opcional para mapear 'Tam_m2' con los valores que queremos 
 
-    logger = get_run_logger()
+    # Variables de control
+    task_code, task_msg = 0, ""
+    df, df_cp = pd.DataFrame(), pd.DataFrame()
+    con = None
 
-    # 2) Extraer CSV
-    df = extract_csv(str(SOURCE_PATH), ";")
+    # Ejecución secuencial de tareas
+    while task_code == 0:
+        # 1) Extract CSV principal
+        code_01, msg_01, df = extract_csv(str(SOURCE_PATH), ";")
+        task_code, task_msg = code_01, msg_01
+        logger.info(msg_01)
+        if task_code != 0:
+            break
 
-    # 3) Check Nulls
-    code_nulls, msg_nulls = check_nulls_ge(df)
-    logger.info(msg_nulls)
+        # 2) Renombrar columnas del df principal
+        #    Ajusta el mapeo según lo indicado:
+        rename_map = {
+            "Affiliated_NAME": "Affiliated_Name",
+            "POSTALCODE": "cp",
+            "Management_Cluster": "Cluster"
+        }
+        code_02, msg_02, df = rename_col(df, rename_map)
+        task_code, task_msg = code_02, msg_02
+        logger.info(msg_02)
+        if task_code != 0:
+            break
 
-    # 4) Check Unique
-    code_unique, msg_unique = check_unique_ge(df, TABLE_PK)
-    logger.info(msg_unique)
-    if code_unique == 0:
-        code_force, df_mod, msg_force = transform_col_unique(df, TABLE_PK)
-        logger.info(msg_force)
-        if code_force == 0:
-            raise RuntimeError("Aborting affiliated_flow: " + msg_force)
-        df = df_mod
+        # 3) Extract CSV de códigos postales
+        code_03, msg_03, df_cp = extract_csv(str(PC_PATH), ";")
+        task_code, task_msg = code_03, msg_03
+        logger.info(msg_03)
+        if task_code != 0:
+            break
 
-    # 5) Transformar columna categórica
-    code_cat, df_cat, mapping, msg_cat = transform_cat_to_num(df, "Location")
-    logger.info(msg_cat)
-    if code_cat == 0:
-        raise RuntimeError("Aborting affiliated_flow: " + msg_cat)
-    df = df_cat
+        # 4) Agrupar df_cp por "cp" con AGG_MAP
+        code_04, msg_04, df_cp = group_by(df_cp, "cp", AGG_MAP)
+        task_code, task_msg = code_04, msg_04
+        logger.info(msg_04)
+        if task_code != 0:
+            break
 
-    # 6) Conectar a DuckDB
-    code_con, msg_con, con = connect_local_duckdb(str(LOCAL_DB_PATH))
-    logger.info(msg_con)
-    if code_con == 0 or con is None:
-        raise RuntimeError("Aborting affiliated_flow: " + msg_con)
+        # 5) Unir df principal con df_cp agrupado por "cp"
+        code_05, msg_05, df = join_tables("cp", "LEFT", df, df_cp)
+        task_code, task_msg = code_05, msg_05
+        logger.info(msg_05)
+        if task_code != 0:
+            break
 
-    # 7) Crear o actualizar tabla principal
-    code_tbl, msg_tbl, head_df = create_local_table(df, TABLE_NAME, con)
-    if code_tbl == 2:
-        # La tabla ya existe: actualizamos sus datos
-        logger.info(msg_tbl)
-        code_upd, msg_upd = update_local_table(df, TABLE_NAME, con)
-        logger.info(msg_upd)
-        if code_upd == 0:
-            raise RuntimeError("Aborting affiliated_flow: " + msg_upd)
-    elif code_tbl == 1:
-        # Se creó por primera vez
-        logger.info(msg_tbl)
-        # Mostrar primeras 5 filas
-        logger.info(f"Primeras 5 filas de '{TABLE_NAME}':\n{head_df}")
+        # 6) transform_cat_to_num sobre "Location"
+        code_06, msg_06, df = transform_cat_to_num(df, "Location")
+        task_code, task_msg = code_06, msg_06
+        logger.info(msg_06)
+        if task_code != 0:
+            break
+
+        # 7) transform_cat_to_num sobre "Tam_m2", usando Tam_map si existe
+        if Tam_map is not None:
+            code_07, msg_07, df = transform_cat_to_num(df, "Tam_m2", Tam_map)
+        else:
+            code_07, msg_07, df = transform_cat_to_num(df, "Tam_m2")
+        task_code, task_msg = code_07, msg_07
+        logger.info(msg_07)
+        if task_code != 0:
+            break
+
+        # 8) check_nulls en df
+        code_08, msg_08 = check_nulls(df)
+        task_code, task_msg = code_08, msg_08
+        logger.info(msg_08)
+        if task_code != 0:
+            break
+
+        # 9) check_unique en la PK
+        code_09, msg_09 = check_unique(df, TABLE_PK)
+        task_code, task_msg = code_09, msg_09
+        logger.info(msg_09)
+        if task_code != 0:
+            break
+
+        # 10) check_datatypes según QUALITY (si hay QUALITY)
+        if QUALITY:
+            # según convención: check_datatypes devuelve (code, df_mod, msg)
+            code_10, df_dt, msg_10 = check_datatypes(df, QUALITY)
+            task_code, task_msg = code_10, msg_10
+            if task_code == 0:
+                # error en datatypes
+                logger.info(msg_10)
+                break
+            # si todo OK, actualizamos df
+            df = df_dt
+            logger.info(msg_10)
+        else:
+            logger.warning("⚠️ No hay diccionario 'Quality' en settings; omitiendo check_datatypes.")
+        # Si error en datatypes, task_code ya != 0 y sale
+        if task_code != 0:
+            break
+
+        # 11) connect_local_duckdb
+        code_11, msg_11, con = connect_local_duckdb(str(LOCAL_DB_PATH))
+        task_code, task_msg = code_11, msg_11
+        logger.info(msg_11)
+        if task_code != 0 or con is None:
+            break
+
+        # 12) create_local_table
+        code_12, msg_12 = create_local_table(df, TABLE_NAME, con)
+        task_code, task_msg = code_12, msg_12
+        logger.info(msg_12)
+        if task_code != 0:
+            break
+
+        # 13) update_summary
+        code_13, msg_13 = update_summary(df, TABLE_ID, TABLE_NAME, con)
+        task_code, task_msg = code_13, msg_13
+        logger.info(msg_13)
+        if task_code != 0:
+            break
+
+        # Si hemos llegado aquí, todo OK; salimos del while
+        break
+
+    # Post-bucle: manejar error o éxito
+    if task_code != 0:
+        # Llamar a error_handling con df para contexto
+        error_handling(task_code, task_msg, df)
+        # No devolvemos nada: el flow termina en estado Failed implícito
+        return
     else:
-        # code_tbl == 0: error creando tabla
-        raise RuntimeError("Aborting affiliated_flow: " + msg_tbl)
-
-    # 8) Actualizar summary
-    code_sum, msg_sum = update_summary(df, TABLE_ID, TABLE_NAME, con)
-    logger.info(msg_sum)
-    if code_sum == 0:
-        raise RuntimeError("Aborting affiliated_flow: " + msg_sum)
-
-    logger.info("🎉 affiliated_flow completado con éxito.")
+        return (task_code, f"✅ affiliated_flow completado! Tabla {TABLE_ID} - {TABLE_NAME} cargada con éxito en Local ")

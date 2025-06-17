@@ -10,7 +10,7 @@ def create_local_table(
     df: pd.DataFrame,
     table_name: str,
     con: duckdb.DuckDBPyConnection
-) -> Tuple[int, str, Any]:
+) -> Tuple[int, str]:
     """
     0 → Éxito: tabla creada y poblada (devuelve head_df)
     1 → Parámetros inválidos (df o table_name)
@@ -80,6 +80,6 @@ def create_local_table(
     # 6) Leer un head para devolver
     try:
         head_df = con.execute(f"SELECT * FROM {table_name} LIMIT 5").fetchdf()
-        return 0, f"✅ create_local_table Tabla '{table_name}' creada y poblada con éxito.", head_df
+        return 0, f"✅ create_local_table Tabla '{table_name}' creada y poblada con éxito. {head_df}"
     except Exception as e:
-        return 4, f"❌ create_local_table Error leyendo primeras filas de '{table_name}': {e}", None
+        return 4, f"❌ create_local_table Error leyendo primeras filas de '{table_name}': {e}"

@@ -9,7 +9,27 @@
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Affiliated_Outlets.csv",
             "TABLE_NAME": "affiliated_outlets",
             "TABLE_ID": 1,
-            "TABLE_PK":"Affiliated_Code"
+            "TABLE_PK":"Affiliated_Code",
+            "PC_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\postalcode.csv",
+            "AGG_MAP":{
+              "poblacion":"FIRST",
+              "provinciaid":"FIRST",
+              "provincia":"FIRST"
+            },
+            "QUALITY":{
+              "Affiliated_Code":"str",
+              "Affiliated_Name": "str",
+              "Engage":"int",
+              "Cluster":"int",
+              "Location":"str",
+              "Location_num":"int",
+              "Tam_m2":"str",
+              "Tam_m2_num":"int",
+              "cp":"str",
+              "poblacion":"str",
+              "provinciaid":"int",
+              "provincia":"str"
+            }
           },
           "product": {
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",

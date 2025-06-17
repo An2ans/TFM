@@ -87,7 +87,7 @@ def calendar_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
             break
 
         # 7) Crear tabla calendar
-        code_07, msg_07, _ = create_local_table(df, TABLE_NAME, con)
+        code_07, msg_07 = create_local_table(df, TABLE_NAME, con)
         task_code, task_msg = code_07, msg_07
         logger.info(msg_07)
         if task_code != 0:
