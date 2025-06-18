@@ -88,7 +88,7 @@ def product_flow(settings: dict, LOCAL_DB_PATH: str) -> pd.DataFrame:
             break
 
         # 6) Crear o actualizar tabla
-        code_07, msg_07, head_df = create_local_table(df, TABLE_NAME, con)
+        code_07, msg_07, df = create_local_table(df, TABLE_NAME, con)
         task_code, task_msg = code_07, msg_07
         if task_code != 0:
             break

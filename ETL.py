@@ -41,14 +41,12 @@ def etl_orchestrator():
     code_pool, msg_pool = connect_prefect_workpool()
     logger.info(msg_pool)
     if code_pool == 0:
-        raise RuntimeError("Aborting ETL: " + msg_pool)
+        raise RuntimeError("Aborting ETL: " + msg_pool)    
 
     # 2) Ejecutar subflow 'affiliated_flow'con sus settings
     logger.info("▶️ Iniciando `affiliated_flow` …")
     affiliated_code, affiliated_msg = affiliated_flow(flow_settings["affiliated"], LOCAL_DB_PATH)
     logger.info(affiliated_msg)
-
-    """
 
     # 3) Ejecutar subflow 'product_flow'con sus settings
     logger.info("▶️ Iniciando `product_flow` …")
@@ -76,7 +74,7 @@ def etl_orchestrator():
     calendar_code, calendar_msg = calendar_flow(flow_settings["calendar"], LOCAL_DB_PATH)
     logger.info(calendar_msg)
 
-    """
+   
 
     code_fin, msg_fin = finish_ETL()
     logger.info(msg_fin)

@@ -144,15 +144,12 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
         # 10) check_datatypes según QUALITY (si hay QUALITY)
         if QUALITY:
             # según convención: check_datatypes devuelve (code, df_mod, msg)
-            code_10, df_dt, msg_10 = check_datatypes(df, QUALITY)
+            code_10, msg_10, df = check_datatypes(df, QUALITY)
             task_code, task_msg = code_10, msg_10
             if task_code == 0:
                 # error en datatypes
                 logger.info(msg_10)
                 break
-            # si todo OK, actualizamos df
-            df = df_dt
-            logger.info(msg_10)
         else:
             logger.warning("⚠️ No hay diccionario 'Quality' en settings; omitiendo check_datatypes.")
         # Si error en datatypes, task_code ya != 0 y sale
@@ -167,7 +164,7 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
             break
 
         # 12) create_local_table
-        code_12, msg_12 = create_local_table(df, TABLE_NAME, con)
+        code_12, msg_12, df = create_local_table(df, TABLE_NAME, con)
         task_code, task_msg = code_12, msg_12
         logger.info(msg_12)
         if task_code != 0:
@@ -190,4 +187,4 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
         # No devolvemos nada: el flow termina en estado Failed implícito
         return
     else:
-        return (task_code, f"✅ affiliated_flow completado! Tabla {TABLE_ID} - {TABLE_NAME} cargada con éxito en Local ")
+        return (0, f"✅ affiliated_flow completado! Tabla {TABLE_ID} - {TABLE_NAME} cargada con éxito en Local ")

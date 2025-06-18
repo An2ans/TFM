@@ -71,22 +71,22 @@ def check_datatypes(
             # Check datetime separately
             if target_type == "datetime":
                 if not pd.api.types.is_datetime64_any_dtype(current_dtype):
-                    df[col] = pd.to_datetime(df[col], errors="raise")
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
                     changes.append(f"Columna '{col}' convertida a datetime")
             else:
                 # Para tipos numéricos y de texto
                 if requested in ("int", "integer"):
-                    if not pd.api.types.is_integer_dtype(current_dtype):
-                        df[col] = df[col].astype(int)
-                        changes.append(f"Columna '{col}' convertida a int")
+                    if not pd.api.types.is_integer_dtype(current_dtype) and not pd.api.types.is_dtype_equal(current_dtype, "Int64"):
+                        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+                        changes.append(f"Columna '{col}' convertida a Int64 (nullable)")
                 elif requested in ("float", "number"):
                     if not pd.api.types.is_float_dtype(current_dtype):
-                        df[col] = df[col].astype(float)
-                        changes.append(f"Columna '{col}' convertida a float")
+                        df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
+                        changes.append(f"Columna '{col}' convertida a float64, nulos forzados a NaN")
                 elif requested in ("bool", "boolean"):
-                    if not pd.api.types.is_bool_dtype(current_dtype):
-                        df[col] = df[col].astype(bool)
-                        changes.append(f"Columna '{col}' convertida a bool")
+                    if not pd.api.types.is_dtype_equal(current_dtype, "boolean"):
+                        df[col] = df[col].astype("boolean")
+                        changes.append(f"Columna '{col}' convertida a BooleanDtype (nullable)")
                 else:  # str / string
                     if not pd.api.types.is_object_dtype(current_dtype):
                         df[col] = df[col].astype(str)

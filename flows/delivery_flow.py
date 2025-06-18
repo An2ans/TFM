@@ -87,7 +87,7 @@ def delivery_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
             break
 
         # 8) Crear tabla
-        code_08, msg_08, _ = create_local_table(df, TABLE_NAME, con)
+        code_08, msg_08, df = create_local_table(df, TABLE_NAME, con)
         task_code, task_msg = code_08, msg_08
         logger.info(msg_08)
         if task_code != 0:
