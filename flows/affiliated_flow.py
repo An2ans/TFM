@@ -3,6 +3,7 @@
 from pathlib import Path
 import pandas as pd
 from prefect import flow, get_run_logger
+from dotenv import load_dotenv
 
 # Importar las tareas usadas
 from tasks.Extract.extract_csv import extract_csv
@@ -17,6 +18,9 @@ from tasks.Load.connect_local_duckdb import connect_local_duckdb
 from tasks.Load.create_local_table import create_local_table
 from tasks.Load.update_summary import update_summary
 from tasks.Quality.error_handling import error_handling
+from tasks.Load.load_table_to_cloud import load_table_to_cloud
+from tasks.Load.connect_cloud_db import connect_cloud_db
+from tasks.Load.update_cloud_summary import update_cloud_summary
 
 @flow(name="affiliated_flow")
 def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
@@ -39,6 +43,9 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
     Si en algún paso code != 0, se aborta y se llama a error_handling.
     Si todo OK, al final devuelve (TABLE_ID, TABLE_NAME, df).
     """
+
+    # Incorporamos las variables de entorno .env
+
     logger = get_run_logger()
 
     # 0) Extraer de settings
@@ -146,7 +153,7 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
             # según convención: check_datatypes devuelve (code, df_mod, msg)
             code_10, msg_10, df = check_datatypes(df, QUALITY)
             task_code, task_msg = code_10, msg_10
-            if task_code == 0:
+            if task_code != 0:
                 # error en datatypes
                 logger.info(msg_10)
                 break
@@ -156,22 +163,25 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
         if task_code != 0:
             break
 
-        # 11) connect_local_duckdb
-        code_11, msg_11, con = connect_local_duckdb(str(LOCAL_DB_PATH))
+        # 11) Conectamos con MotherDuck (Cloud DW)
+        logger.info("▶️ Intentando conectar a DuckDB Cloud...")
+        code_11, msg_11, con = connect_cloud_db()
         task_code, task_msg = code_11, msg_11
         logger.info(msg_11)
-        if task_code != 0 or con is None:
+        if code_11 != 0 or con is None:
             break
 
-        # 12) create_local_table
-        code_12, msg_12, df = create_local_table(df, TABLE_NAME, con)
+        # 12) Creamos (o actualizamos) la tabla en el cloud        
+        logger.info(f"▶️ Intentando cargar tabla '{TABLE_NAME}' al cloud...")
+        code_12, msg_12 =load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_12, msg_12
         logger.info(msg_12)
         if task_code != 0:
             break
 
-        # 13) update_summary
-        code_13, msg_13 = update_summary(df, TABLE_ID, TABLE_NAME, con)
+        # 13) Creamos (o actualizamos) las tablas summary en el cloud        
+        logger.info(f"▶️ Intentando cargar tabla '{TABLE_NAME}' al cloud...")
+        code_13, msg_13 =update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_13, msg_13
         logger.info(msg_13)
         if task_code != 0:
@@ -188,3 +198,5 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
         return
     else:
         return (0, f"✅ affiliated_flow completado! Tabla {TABLE_ID} - {TABLE_NAME} cargada con éxito en Local ")
+
+
