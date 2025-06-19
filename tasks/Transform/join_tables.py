@@ -11,59 +11,67 @@ def join_tables(
     *dfs: pd.DataFrame
 ) -> Tuple[int, str, pd.DataFrame]:
     """
-    Une 2 o más DataFrames en base a una columna común `key`.
-    `how` puede ser "FULL" (outer join) o "INNER" (inner join).
-
+    Une exactamente dos DataFrames en base a una columna común `key`.
+    `how` puede ser:
+      - "FULL"  → outer join
+      - "INNER" → inner join
+      - "LEFT"  → left join (todos de df_left y coincidencias en df_right)
+    
     Códigos de retorno:
-      * 0 → éxito.
-      * 1 → clave inválida (no existe o no es string).
-      * 2 → tipo de join inválido.
-      * 3 → número insuficiente de DataFrames o alguno no es DataFrame.
-      * 4 → mismatch de tipos en la columna key.
-      * 9 → otro error desconocido.
+      0 → éxito.
+      1 → clave inválida (no existe o no es string).
+      2 → tipo de join inválido.
+      3 → número de DataFrames diferente de 2 o alguno no es DataFrame.
+      4 → mismatch de tipos en la columna key entre ambos DataFrames.
+      9 → otro error desconocido.
+    
+    Retorna: (code, mensaje, df_merged_o_empty).
     """
     logger = get_run_logger()
 
     # 1) Validar key
-    if not isinstance(key, str) or not key:
-        return 1, f"join_tables ❌ Error: la clave debe ser un string no vacío.", pd.DataFrame()
+    if not isinstance(key, str) or not key.strip():
+        return 1, "join_tables ❌ Error: la clave debe ser un string no vacío.", pd.DataFrame()
 
     # 2) Validar how
     how_upper = how.upper() if isinstance(how, str) else ""
-    if how_upper not in {"FULL", "INNER"}:
-        return 2, f"join_tables ❌ Error: 'how' debe ser 'FULL' o 'INNER'.", pd.DataFrame()
+    if how_upper not in {"FULL", "INNER", "LEFT"}:
+        return 2, "join_tables ❌ Error: 'how' debe ser 'FULL', 'INNER' o 'LEFT'.", pd.DataFrame()
 
-    # 3) Validar dfs
-    if len(dfs) < 2:
-        return 3, "join_tables ❌ Error: se requieren al menos dos DataFrames para hacer join.", pd.DataFrame()
-    for i, df in enumerate(dfs, start=1):
-        if not isinstance(df, pd.DataFrame):
-            return 3, f"join_tables ❌ Error: el parámetro #{i+2} no es un DataFrame.", pd.DataFrame()
+    # 3) Validar que haya exactamente dos DataFrames
+    if len(dfs) != 2:
+        return 3, "join_tables ❌ Error: se requieren exactamente dos DataFrames para hacer join.", pd.DataFrame()
+    df_left, df_right = dfs
+    if not isinstance(df_left, pd.DataFrame):
+        return 3, "join_tables ❌ Error: el tercer parámetro (df_left) no es un DataFrame.", pd.DataFrame()
+    if not isinstance(df_right, pd.DataFrame):
+        return 3, "join_tables ❌ Error: el cuarto parámetro (df_right) no es un DataFrame.", pd.DataFrame()
 
     try:
-        # Verificar que la clave existe en cada df y chequear tipos
-        dtypes = []
-        for i, df in enumerate(dfs, start=1):
-            if key not in df.columns:
-                return 1, f"join_tables ❌ Error: la clave '{key}' no existe en el DataFrame #{i}.", pd.DataFrame()
-            dtypes.append(df[key].dtype)
+        # 4) Verificar que la clave existe en ambos df y chequear tipos
+        if key not in df_left.columns:
+            return 1, f"join_tables ❌ Error: la clave '{key}' no existe en el DataFrame izquierdo.", pd.DataFrame()
+        if key not in df_right.columns:
+            return 1, f"join_tables ❌ Error: la clave '{key}' no existe en el DataFrame derecho.", pd.DataFrame()
 
-        # 4) Validar que todos los dtypes de la key sean iguales
-        if any(dt != dtypes[0] for dt in dtypes[1:]):
+        dtype_left = df_left[key].dtype
+        dtype_right = df_right[key].dtype
+        if dtype_left != dtype_right:
             return 4, (
                 f"join_tables ❌ Error: mismatch de tipos en la columna '{key}': "
-                f"{[str(dt) for dt in dtypes]}"
+                f"[izquierdo: {dtype_left}, derecho: {dtype_right}]"
             ), pd.DataFrame()
 
-        # Mapeo de how a pandas
-        how_map = {"FULL": "outer", "INNER": "inner"}
+        # 5) Mapear how a pandas
+        how_map = {
+            "FULL": "outer",
+            "INNER": "inner",
+            "LEFT": "left"
+        }
         pandas_how = how_map[how_upper]
 
-        # Comenzar con el primer DataFrame y unir sucesivamente
-        df_merged = dfs[0].copy()
-        for df_next in dfs[1:]:
-            df_merged = pd.merge(df_merged, df_next, on=key, how=pandas_how)
-
+        # 6) Realizar el merge
+        df_merged = pd.merge(df_left.copy(), df_right.copy(), on=key, how=pandas_how)
         msg = f"join_tables ✅ Tablas unidas correctamente usando '{how_upper}' join sobre clave '{key}'."
         return 0, msg, df_merged
 

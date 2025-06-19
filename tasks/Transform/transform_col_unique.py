@@ -33,9 +33,9 @@ def transform_col_unique(df: pd.DataFrame, col: str) -> Tuple[int, pd.DataFrame,
         df_mod[col] = new_values
 
         msg = f"✅ Todos los valores de '{col}' son únicos ahora."
-        return 1, df_mod, msg
+        return 0, msg, df_mod
 
     except Exception as e:
         err = f"❌ Error en transform_col_unique: {e}"
         # Devolvemos el DataFrame original para que el flujo decida cómo continuar
-        return 0, df, err
+        return 9, err, df

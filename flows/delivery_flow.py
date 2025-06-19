@@ -15,7 +15,10 @@ from tasks.Quality.check_unique import check_unique
 from tasks.Quality.error_handling import error_handling
 from tasks.Load.connect_local_duckdb import connect_local_duckdb
 from tasks.Load.create_local_table import create_local_table
-from tasks.Load.update_summary import update_summary
+from tasks.Load.update_cloud_summary import update_cloud_summary
+from tasks.Load.load_table_to_cloud import load_table_to_cloud
+from tasks.Load.connect_cloud_db import connect_cloud_db
+
 
 
 @flow(name="delivery_flow")
@@ -80,21 +83,21 @@ def delivery_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
         logger.info(msg_06)
 
         # 7) Conexión DuckDB
-        code_07, msg_07, con = connect_local_duckdb(LOCAL_DB_PATH)
+        code_07, msg_07, con = connect_cloud_db()
         task_code, task_msg = code_07, msg_07
         logger.info(msg_07)
         if task_code != 0:
             break
 
         # 8) Crear tabla
-        code_08, msg_08, _ = create_local_table(df, TABLE_NAME, con)
+        code_08, msg_08 = load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_08, msg_08
         logger.info(msg_08)
         if task_code != 0:
             break
 
         # 9) Actualizar summary
-        code_09, msg_09 = update_summary(df, TABLE_ID, TABLE_NAME, con)
+        code_09, msg_09 = update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_09, msg_09
         logger.info(msg_09)
         break
