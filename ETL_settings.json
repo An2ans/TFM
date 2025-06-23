@@ -1,11 +1,13 @@
 {
   "settings":{
         "global": {
-          "LOCAL_DB_PATH": "C:\\Users\\anton\\Documents\\TFM\\altadis_local.db"
+          "LOCAL_DB_PATH": "C:\\Users\\anton\\Documents\\TFM\\altadis_local.db",
+          "MAX_TRIES":3
 
         },
         "flows": {
           "affiliated": {
+            "FLOW_NAME": "affiliated_flow",
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Affiliated_Outlets.csv",
             "TABLE_NAME": "affiliated_outlets",
             "TABLE_ID": 1,
@@ -32,6 +34,7 @@
             }
           },
           "product": {
+            "FLOW_NAME":"product_flow",
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\Product.csv",
             "TABLE_NAME": "product",
             "TABLE_ID": 2,
@@ -43,6 +46,7 @@
             }
           },
           "sales": {
+            "FLOW_NAME": "sales_flow",
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\SalesDay.csv",
             "TABLE_NAME": "sales_day",
             "TABLE_ID": 3,
@@ -54,18 +58,21 @@
             }
           },
           "oos": {
+            "FLOW_NAME": "oos_flow",
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\OoSDay.csv",
             "TABLE_NAME": "oos_day",
             "TABLE_ID": 4,
             "TABLE_PK": "oos_ID"
           },
           "delivery": {
+            "FLOW_NAME": "delivery_flow",
             "SOURCE_PATH": "C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\DeliveryDay.csv",
             "TABLE_NAME": "delivery_day",
             "TABLE_ID": 5,
             "TABLE_PK": "delivery_ID"
           },
           "calendar":{
+            "FLOW_NAME": "calendar_flow",
             "SOURCE_PATH":"C:\\Users\\anton\\OneDrive - UNIR\\Equipo\\TFM2\\DATA\\holidays_2015.json",
             "TABLE_NAME": "calendar",
             "TABLE_ID": 6,

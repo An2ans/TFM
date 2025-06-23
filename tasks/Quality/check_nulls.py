@@ -2,7 +2,7 @@
 
 import pandas as pd
 import great_expectations as ge
-from prefect import task
+from prefect import task, get_run_logger
 from typing import Tuple
 
 @task
@@ -20,6 +20,10 @@ def check_nulls(df: pd.DataFrame) -> Tuple[int, str]:
     # Convertir el DataFrame normal a un PandasDataset GE
     ge_df = ge.from_pandas(df)
 
+    logger = get_run_logger()
+    task_name = "check_nulls"
+
+
     columnas_con_nulos = []
     detalle = []
 
@@ -36,11 +40,12 @@ def check_nulls(df: pd.DataFrame) -> Tuple[int, str]:
             detalle.append(f"'{col}' → {null_count} nulos")
 
     if not columnas_con_nulos:
-        msg = "✅ No se encontraron nulos en ninguna columna."
+        msg = f"{task_name}: ✅ No se encontraron nulos en ninguna columna."
         return 0, msg
 
     # Si hay columnas con nulos:
     num_cols = len(columnas_con_nulos)
     cols_lista = "; ".join(detalle)
-    msg = f"⚠️ Se encontraron nulos en {num_cols} columna(s): {cols_lista}"
+    logger.warning(f"{task_name}:⚠️ Se encontraron nulos en {num_cols} columna(s): {cols_lista}")
+    msg = f"{task_name}: tarea completada con éxito."
     return 0, msg
