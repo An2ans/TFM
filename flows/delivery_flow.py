@@ -22,7 +22,7 @@ from tasks.Load.connect_cloud_db import connect_cloud_db
 
 
 @flow(name="delivery_flow")
-def delivery_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
+def delivery_flow(settings: dict) -> Tuple[int, str]:
     """
     delivery_flow: idéntico a sales_flow, pero para los datos de delivery.
     Retorna (TABLE_ID, TABLE_NAME, df) en caso de éxito, 
@@ -90,14 +90,14 @@ def delivery_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
             break
 
         # 8) Crear tabla
-        code_08, msg_08 = load_table_to_cloud(df, TABLE_NAME, con)
+        code_08, msg_08, load_report = load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_08, msg_08
         logger.info(msg_08)
         if task_code != 0:
             break
 
         # 9) Actualizar summary
-        code_09, msg_09 = update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
+        code_09, msg_09 = update_cloud_summary(load_report, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_09, msg_09
         logger.info(msg_09)
         break

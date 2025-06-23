@@ -20,7 +20,7 @@ from tasks.Load.connect_cloud_db import connect_cloud_db
 
 
 @flow(name="product_flow")
-def product_flow(settings: dict, LOCAL_DB_PATH: str) -> pd.DataFrame:
+def product_flow(settings: dict) -> pd.DataFrame:
     """
     ET + Load para productos:
       - Mientras task_code == 0:
@@ -91,13 +91,13 @@ def product_flow(settings: dict, LOCAL_DB_PATH: str) -> pd.DataFrame:
             break
 
         # 6) Crear o actualizar tabla
-        code_07, msg_07 = load_table_to_cloud(df, TABLE_NAME, con)
+        code_07, msg_07, load_report = load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_07, msg_07
         if task_code != 0:
             break
 
         # 7) Actualizar summary
-        code_09, msg_09 = update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
+        code_09, msg_09 = update_cloud_summary(load_report, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_09, msg_09
         logger.info(msg_09)
         if task_code != 0:

@@ -23,7 +23,7 @@ from tasks.Load.connect_cloud_db import connect_cloud_db
 from tasks.Load.update_cloud_summary import update_cloud_summary
 
 @flow(name="affiliated_flow")
-def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
+def affiliated_flow(settings: dict):
     """
     Flujo para procesar la tabla de 'affiliated':
     Pasos:
@@ -173,7 +173,7 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
 
         # 12) Creamos (o actualizamos) la tabla en el cloud        
         logger.info(f"▶️ Intentando cargar tabla '{TABLE_NAME}' al cloud...")
-        code_12, msg_12 =load_table_to_cloud(df, TABLE_NAME, con)
+        code_12, msg_12, load_report =load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_12, msg_12
         logger.info(msg_12)
         if task_code != 0:
@@ -181,7 +181,7 @@ def affiliated_flow(settings: dict, LOCAL_DB_PATH: str):
 
         # 13) Creamos (o actualizamos) las tablas summary en el cloud        
         logger.info(f"▶️ Intentando cargar tabla '{TABLE_NAME}' al cloud...")
-        code_13, msg_13 =update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
+        code_13, msg_13 =update_cloud_summary(load_report, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_13, msg_13
         logger.info(msg_13)
         if task_code != 0:

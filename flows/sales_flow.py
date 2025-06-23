@@ -21,7 +21,7 @@ from tasks.Load.connect_cloud_db import connect_cloud_db
 
 
 @flow(name="sales_flow")
-def sales_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
+def sales_flow(settings: dict) -> Tuple[int, str]:
     """
     Sales Flow siguiendo el patrón de control por pasos:
       - Mientras task_code == 0:
@@ -91,14 +91,14 @@ def sales_flow(settings: dict, LOCAL_DB_PATH: str) -> Tuple[int, str]:
             break
 
         # 8) Load: crear tabla en DuckDB
-        code_08, msg_08 = load_table_to_cloud(df, TABLE_NAME, con)
+        code_08, msg_08, load_report = load_table_to_cloud(df, TABLE_NAME, con)
         task_code, task_msg = code_08, msg_08
         logger.info(msg_08)
         if task_code != 0:
             break
 
         # 9) Load: actualizar resumen
-        code_09, msg_09= update_cloud_summary(df, TABLE_ID, TABLE_NAME, con)
+        code_09, msg_09= update_cloud_summary(load_report, TABLE_ID, TABLE_NAME, con)
         task_code, task_msg = code_09, msg_09
         logger.info(msg_09)
         # romper tras paso 9
