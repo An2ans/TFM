@@ -14,9 +14,6 @@ from tasks.Transform.transform_cat_to_num import transform_cat_to_num
 from tasks.Quality.check_nulls import check_nulls
 from tasks.Quality.check_unique import check_unique
 from tasks.Quality.check_datatypes import check_datatypes
-from tasks.Load.connect_local_duckdb import connect_local_duckdb
-from tasks.Load.create_local_table import create_local_table
-from tasks.Load.update_summary import update_summary
 from tasks.Quality.error_handling import error_handling
 from tasks.Load.load_table_to_cloud import load_table_to_cloud
 from tasks.Load.connect_cloud_db import connect_cloud_db

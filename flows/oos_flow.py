@@ -12,8 +12,6 @@ from tasks.Transform.transform_date import transform_date
 from tasks.Transform.sort_dates import sort_dates
 from tasks.Quality.check_unique import check_unique
 from tasks.Quality.error_handling import error_handling
-from tasks.Load.connect_local_duckdb import connect_local_duckdb
-from tasks.Load.create_local_table import create_local_table
 from tasks.Load.update_cloud_summary import update_cloud_summary
 from tasks.Load.load_table_to_cloud import load_table_to_cloud
 from tasks.Load.connect_cloud_db import connect_cloud_db

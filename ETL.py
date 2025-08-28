@@ -1,6 +1,5 @@
 # ETL.py
 
-import os
 import json
 import time
 from dotenv import load_dotenv
@@ -9,6 +8,8 @@ from prefect import flow, get_run_logger
 from dataclasses import dataclass
 
 from tasks.Load.connect_prefect_workpool import connect_prefect_workpool
+from tasks.Load.connect_cloud_db import connect_cloud_db
+from tasks.Load.create_views import create_views
 from tasks.Load.finish_ETL import finish_ETL
 
 
@@ -32,6 +33,7 @@ with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
 
 global_settings = settings.get("global", {})
 flow_settings   = settings.get("flows", {})
+views           = settings.get("views", {})
 LOCAL_DB_PATH   = global_settings.get("LOCAL_DB_PATH")
 MAX_TRIES       = int(global_settings.get("MAX_TRIES", 3))
 
@@ -71,20 +73,16 @@ def etl_orquestador():
         # OK, agregamos a la lista: (alias, función, settings_para_ese_flow)
         flows_to_run.append(FlowJob(alias, flow_fn, conf))
 
-    # 1) (Opcional) conectar al work pool
-    try:
-        code_pool, msg_pool = connect_prefect_workpool()
+    # 1)  conectar al work pool
+    code_pool, msg_pool, pool = connect_prefect_workpool()
+    if code_pool == 0:
         logger.info(msg_pool)
-        # Asumimos convención: code_pool == 0 indica error, !=0 éxito
-        if code_pool == 0:
-            # Si quieres abortar todo cuando no se conecta, descomenta:
-            # raise RuntimeError("Aborting ETL: " + msg_pool)
-            logger.error(f"connect_prefect_workpool indicó fallo: {msg_pool}. Se continúa localmente.")
-    except Exception as e:
-        logger.error(f"Excepción al conectar work pool: {e}. Se continúa localmente.")
+    else:
+        logger.error(f"Error Código {code_pool}: {msg_pool}")
+    
 
         
-
+    # 2) Ejecutamos el While Loop que controlará la ejecución de los flows hasta que todos estén completados. 
     logger.info(f"Se van a ejecutar {len(flows_to_run)} flows con un máximo de {MAX_TRIES} intentos cada uno.")
 
     while any(job.status != "completed" and job.tries < MAX_TRIES for job in flows_to_run):
@@ -120,7 +118,18 @@ def etl_orquestador():
         logger.error(f"⚠️ Algunos flows fallaron tras {MAX_TRIES} intentos: {failed_aliases}")
         logger.info(f"⏱️ Tiempo total de ejecución: {total_time:.2f} segundos.")
 
-    # Finalmente, finish_ETL
+    # Cuando se han finalizado todas las cargar, creamos (o reemplazamos) las vistas de las tablas de hechos. 
+    code_cloud, msg_cloud, con = connect_cloud_db()
+    if code_cloud == 0:
+        code_views, msg_views = create_views(views, con)
+        if code_views == 0:
+            logger.info(msg_views)
+        else:
+            logger.error(msg_views)
+    else:
+        logger.error(msg_cloud)
+
+    # Finalmente, finish_ETL para borrar el cache y cerrar las conexiones 
     try:
         code_fin, msg_fin = finish_ETL()
         logger.info(msg_fin)

@@ -3,7 +3,6 @@
 from datetime import datetime, timedelta
 from typing import Tuple
 import pandas as pd
-from pathlib import Path
 from prefect import task
 
 # Mapas para nombres en español

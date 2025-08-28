@@ -99,7 +99,16 @@
               "Comments": "str"
             }
           }
+        },
+        "views": {
+          "v_sales":"SELECT * FROM sales_day ;",
+          "v_delivery": "SELECT Delivery_DAY AS Delivery_Date,  Affiliated_Code,  Product_Code AS ProdCode_DEL, SUM(Delivery_Uds)  AS Delivery_Uds FROM delivery_day GROUP BY  Delivery_DAY,  Affiliated_Code, Product_Code;",
+          "v_oos": "SELECT OoS_DAY AS Out_Stock_Date, Affiliated_Code, Product_Code AS ProdCode_OOS FROM oos_day GROUP BY OoS_DAY,  Affiliated_Code,  Product_Code;",
+          "v_stock": "SELECT vs.Date,vs.Affiliated_Code,vs.Product_Code,vs.ProdCode_DEL,vs.ProdCode_OOS,vs.Delivery_Uds,vs.Flag_del,vs.Flag_oos,vs.entrega_grp,MIN(CASE WHEN vs.Flag_oos=1 THEN vs.Date END) OVER(PARTITION BY vs.Affiliated_Code,vs.Product_Code,vs.entrega_grp ORDER BY vs.Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS First_OOS,CASE WHEN MIN(CASE WHEN vs.Flag_oos=1 THEN vs.Date END) OVER(PARTITION BY vs.Affiliated_Code,vs.Product_Code,vs.entrega_grp ORDER BY vs.Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) IS NOT NULL THEN DATEDIFF('day',MIN(CASE WHEN vs.Flag_oos=1 THEN vs.Date END) OVER(PARTITION BY vs.Affiliated_Code,vs.Product_Code,vs.entrega_grp ORDER BY vs.Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),vs.Date) END AS OOS_Days,CASE WHEN vs.Flag_del=1 AND MIN(CASE WHEN vs.Flag_oos=1 THEN vs.Date END) OVER(PARTITION BY vs.Affiliated_Code,vs.Product_Code,vs.entrega_grp ORDER BY vs.Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) IS NOT NULL THEN 1 WHEN vs.Flag_del=1 THEN 0 END AS Flag_Delivered_OOS FROM (SELECT COALESCE(d.Delivery_Date,s.Out_Stock_Date) AS Date,COALESCE(d.Affiliated_Code,s.Affiliated_Code) AS Affiliated_Code,COALESCE(d.ProdCode_DEL,s.ProdCode_OOS) AS Product_Code,d.ProdCode_DEL,s.ProdCode_OOS,d.Delivery_Uds,IF(d.ProdCode_DEL IS NOT NULL,1,0) AS Flag_del,IF(s.ProdCode_OOS IS NOT NULL,1,0) AS Flag_oos,SUM(IF(d.ProdCode_DEL IS NOT NULL,1,0)) OVER(PARTITION BY COALESCE(d.Affiliated_Code,s.Affiliated_Code),COALESCE(d.ProdCode_DEL,s.ProdCode_OOS) ORDER BY COALESCE(d.Delivery_Date,s.Out_Stock_Date) ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS entrega_grp FROM v_delivery AS d FULL OUTER JOIN v_oos AS s ON d.Affiliated_Code=s.Affiliated_Code AND d.Delivery_Date=s.Out_Stock_Date AND d.ProdCode_DEL=s.ProdCode_OOS) AS vs ORDER BY vs.Date;"
         }
   }
 }
+
+
+
 
