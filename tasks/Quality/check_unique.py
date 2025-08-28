@@ -16,8 +16,8 @@ def check_unique(df: Any, col: str) -> Tuple[int, str]:
         * code=2 si la columna `col` no existe en `df`.
         * code=9 para cualquier otro error inesperado.
 
-    En caso de duplicados, se emite un logger.warning con los detalles, 
-    pero el flujo continúa (devuelve siempre código 0 salvo error interno).
+    En caso de duplicados, se emite un logger.warning con los detalles y se devuelve -1, 
+    si no hay duplicados devuelve código 0 salvo error interno.
     """
 
     logger = get_run_logger()
@@ -63,7 +63,7 @@ def check_unique(df: Any, col: str) -> Tuple[int, str]:
         logger.warning(warning_msg)
 
         # 7) Aunque haya duplicados, devolvemos code=0 y el mensaje de advertencia
-        return 0, warning_msg
+        return -1, warning_msg
 
     except Exception as e:
         # 8) Cualquier otro error inesperado

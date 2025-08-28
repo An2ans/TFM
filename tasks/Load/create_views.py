@@ -4,7 +4,7 @@ import re
 from typing import Dict, Tuple, Any
 from prefect import task, get_run_logger
 
-@task
+@task(cache_key_fn=lambda *args, **kwargs: None)
 def create_views(
     views: Dict[str, str],
     con: Any
@@ -51,12 +51,6 @@ def create_views(
         msg = f"{task_name} ❌ Error: conexión inválida o ping fallido: {e}"
         return 2, msg
 
-    # Precompile regex para identificador DuckDB
-    # Reglas básicas:
-    #  - Comenzar con letra ASCII (a-z, A-Z) o guión bajo _
-    #  - Seguir con letras ASCII, dígitos o guión bajo
-    #  - No espacios ni caracteres especiales
-    # Nota: no se comprueban exhaustivamente palabras reservadas.
     identifier_pattern = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
     # 3) Para cada vista, validar nombre y luego crear/reemplazar

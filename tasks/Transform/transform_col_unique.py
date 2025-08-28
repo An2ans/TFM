@@ -2,14 +2,14 @@
 
 import pandas as pd
 from typing import Tuple, Any
-from prefect import task, get_run_logger
+from prefect import task
 
 @task
-def transform_col_unique(df: pd.DataFrame, col: str) -> Tuple[int, pd.DataFrame, str]:
+def transform_col_unique(df: pd.DataFrame, col: str) -> Tuple[int, str, pd.DataFrame]:
     """
     Garantiza que los valores en df[col] sean únicos.
     Si aparece un duplicado, añade ' - N' donde N es el contador de duplicados.
-    Ejemplo: ['A', 'A', 'B', 'A'] → ['A', 'A - 2', 'B', 'A - 3']
+    Ejemplo: ['A', 'A', 'B', 'A'] → ['A', 'A-2', 'B', 'A-3']
 
     Devuelve:
       * code = 1 si se transformó correctamente.
@@ -27,7 +27,7 @@ def transform_col_unique(df: pd.DataFrame, col: str) -> Tuple[int, pd.DataFrame,
             if counts[val] == 1:
                 new_values.append(val)
             else:
-                new_values.append(f"{val} - {counts[val]}")
+                new_values.append(f"{val}-{counts[val]}")
 
         df_mod = df.copy()
         df_mod[col] = new_values

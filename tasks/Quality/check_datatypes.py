@@ -3,122 +3,99 @@
 import pandas as pd
 import great_expectations as ge
 from prefect import task, get_run_logger
-from typing import Tuple, Any, Dict
+from typing import Tuple, Dict
 
 @task
 def check_datatypes(
     df: pd.DataFrame,
     expected_types: Dict[str, str]
 ) -> Tuple[int, str, pd.DataFrame]:
-    """
-    Verifica que `df` tenga exactamente las columnas y tipos indicados en `expected_types`,
-    en el orden especificado. Si faltan o sobran columnas, reporta error. Si el orden es distinto,
-    reordena. Si el tipo no coincide, intenta convertir y reporta el cambio.
 
-    expected_types: { column_name: type_string }, donde type_string ∈ {"str", "string", "int", "integer", "float", "number", "bool", "boolean", "datetime"}
+    # Validaciones iniciales
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        return 1, "❌ DataFrame de entrada no existe o está vacío.", df
 
-    Devuelve:
-      * code = 1 si logra dejar df con columnas y tipos correctos.
-      * df_mod = DataFrame ajustado.
-      * message = HEAD(5) + ESTRUCTURA O LISTA DE ERRORES seguidos de descriptions de cambios.
-      * code = 0 si error bloqueante, con mensaje que incluye HEAD(5) y estructura.
-    """
-    logger = get_run_logger()
+    if expected_types is None or not isinstance(expected_types, dict) or not expected_types:
+        return 2, "❌ expected_types debe ser un diccionario no vacío.", df
+
+    expected_cols = list(expected_types.keys())
+    actual_cols = list(df.columns)
+
+    # 1) Verificar que todas las columnas de expected existan en df
+    for col in expected_cols:
+        if col not in actual_cols:
+            return 3, f"❌ Columna esperada '{col}' no existe en el DataFrame.", df
+
+    # 2) Verificar que todos los tipos estén soportados
+    type_map = {
+        "str": str, "string": str,
+        "int": int, "integer": int,
+        "float": float, "number": float,
+        "bool": bool, "boolean": bool,
+        "datetime": "datetime"
+    }
+
+    for col, type_str in expected_types.items():
+        if type_str.lower() not in type_map:
+            return 4, f"❌ Tipo no reconocido para columna '{col}': '{type_str}'", df
+
+    # 3) Validar tipos con Great Expectations
     try:
-        # 1. Verificar columnas exactas (sin extras ni faltantes)
-        expected_cols = list(expected_types.keys())
-        actual_cols = list(df.columns)
-
-        missing = [c for c in expected_cols if c not in actual_cols]
-        extra   = [c for c in actual_cols if c not in expected_cols]
-        if missing or extra:
-            msg = ""
-            if missing:
-                msg += f"❌ Faltan columnas: {missing}. "
-            if extra:
-                msg += f"❌ Columnas inesperadas: {extra}. "
-            head_str = df.head(5).to_string(index=False)
-            dtypes_str = df.dtypes.astype(str).to_string()
-            full_msg = (
-                f"{msg}\n\n"
-                f"DataFrame.head(5):\n{head_str}\n\n"
-                f"Estructura de columnas:\n{dtypes_str}"
-            )
-            return 0, df, full_msg
-
-        # 2. Reordenar si el orden difiere
-        if actual_cols != expected_cols:
-            df = df[expected_cols]
-            logger.info(f"🔄 Columnas reordenadas a {expected_cols}.")
-
-        # 3. Mapear cadenas a tipos Python/numpy
-        type_map = {
-            "str": str, "string": str,
-            "int": int, "integer": int,
-            "float": float, "number": float,
-            "bool": bool, "boolean": bool,
-            "datetime": "datetime"
-        }
-
-        changes = []
+        gdf = ge.from_pandas(df)
+        ge_results = {}
         for col, type_str in expected_types.items():
-            requested = type_str.lower()
-            if requested not in type_map:
-                raise ValueError(f"Unrecognized type '{type_str}' para columna '{col}'")
-            target_type = type_map[requested]
-
-            current_dtype = df[col].dtype
-            # Check datetime separately
-            if target_type == "datetime":
-                if not pd.api.types.is_datetime64_any_dtype(current_dtype):
-                    df[col] = pd.to_datetime(df[col], errors="coerce")
-                    changes.append(f"Columna '{col}' convertida a datetime")
+            if type_str.lower() == "datetime":
+                result = gdf.expect_column_values_to_match_strftime_format(col, "%Y-%m-%d", mostly=0.9, result_format="COMPLETE")
             else:
-                # Para tipos numéricos y de texto
-                if requested in ("int", "integer"):
-                    if not pd.api.types.is_integer_dtype(current_dtype) and not pd.api.types.is_dtype_equal(current_dtype, "Int64"):
-                        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-                        changes.append(f"Columna '{col}' convertida a Int64 (nullable)")
-                elif requested in ("float", "number"):
-                    if not pd.api.types.is_float_dtype(current_dtype):
-                        df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
-                        changes.append(f"Columna '{col}' convertida a float64, nulos forzados a NaN")
-                elif requested in ("bool", "boolean"):
-                    if not pd.api.types.is_dtype_equal(current_dtype, "boolean"):
-                        df[col] = df[col].astype("boolean")
-                        changes.append(f"Columna '{col}' convertida a BooleanDtype (nullable)")
-                else:  # str / string
-                    if not pd.api.types.is_object_dtype(current_dtype):
-                        df[col] = df[col].astype(str)
-                        changes.append(f"Columna '{col}' convertida a string")
-
-        # 4. Construir mensaje final
-        head_str = df.head(5).to_string(index=False)
-        dtypes_str = df.dtypes.astype(str).to_string()
-
-        if changes:
-            changes_str = "\n".join(f"✅ {c}" for c in changes)
-            msg = (
-                f"✅ check_datatypes completado. Se aplicaron cambios:\n"
-                f"{changes_str}\n\n"
-                f"DataFrame.head(5):\n{head_str}\n\n"
-                f"Estructura de columnas:\n{dtypes_str}"
-            )
-        else:
-            msg = (
-                f"✅ check_datatypes completado. No fue necesario ningún cambio.\n\n"
-                f"DataFrame.head(5):\n{head_str}\n\n"
-                f"Estructura de columnas:\n{dtypes_str}"
-            )
-
-        return 0, msg, df
-
+                result = gdf.expect_column_values_to_be_of_type(col, type_str.lower(), result_format="COMPLETE")
+            ge_results[col] = result
     except Exception as e:
-        head_str = df.head(5).to_string(index=False)
-        dtypes_str = df.dtypes.astype(str).to_string()
-        full_msg = (
-            f"❌ Error en check_datatypes: {e}\n\n"
-            f"DataFrame.head(5):\n{head_str}\n\n"
-            f"Estructura de columnas:\n{dtypes_str}"
+        return 9, f"❌ Error ejecutando validaciones con GE: {e}", df
+
+    # 4) Transformaciones necesarias
+    changes = []
+    df_mod = df.copy()
+    for col, type_str in expected_types.items():
+        if not ge_results[col]["success"]:
+            try:
+                # Convertir columna
+                canonical = type_str.lower()
+                if canonical in ["int", "integer"]:
+                    df_mod[col] = pd.to_numeric(df_mod[col], errors="coerce").astype("Int64")
+                    changes.append(f"Columna '{col}' convertida a Int64")
+                elif canonical in ["float", "number"]:
+                    df_mod[col] = pd.to_numeric(df_mod[col], errors="coerce").astype(float)
+                    changes.append(f"Columna '{col}' convertida a float64")
+                elif canonical in ["bool", "boolean"]:
+                    df_mod[col] = df_mod[col].astype("boolean")
+                    changes.append(f"Columna '{col}' convertida a boolean")
+                elif canonical == "datetime":
+                    df_mod[col] = pd.to_datetime(df_mod[col], errors="coerce")
+                    changes.append(f"Columna '{col}' convertida a datetime")
+                elif canonical in ["str", "string"]:
+                    df_mod[col] = df_mod[col].astype(str)
+                    changes.append(f"Columna '{col}' convertida a string")
+            except Exception as e:
+                return 5, f"❌ Error al convertir columna '{col}' a tipo '{type_str}': {e}", df
+
+    # 5) Reordenar si es necesario
+    if list(df_mod.columns) != expected_cols:
+        df_mod = df_mod[expected_cols]
+        changes.append(f"🔄 Columnas reordenadas a: {expected_cols}")
+
+    # 6) Construir mensaje
+    head_str = df_mod.head(5).to_string(index=False)
+    dtypes_str = df_mod.dtypes.astype(str).to_string()
+    if changes:
+        msg = (
+            f"✅ check_datatypes: cambios aplicados:\n"
+            + "\n".join(f"   • {c}" for c in changes) +
+            f"\n\nDataFrame.head(5):\n{head_str}\n\nEstructura:\n{dtypes_str}"
         )
-        return 9, full_msg, df
+    else:
+        msg = (
+            f"✅ check_datatypes: no se detectaron problemas ni se aplicaron cambios.\n\n"
+            f"DataFrame.head(5):\n{head_str}\n\nEstructura:\n{dtypes_str}"
+        )
+
+    return 0, msg, df_mod

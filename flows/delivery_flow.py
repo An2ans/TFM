@@ -40,7 +40,7 @@ def delivery_flow(settings: dict) -> Tuple[int, str]:
     task_code, task_msg = 0, ""
     df: pd.DataFrame = pd.DataFrame()
 
-    # 1–6) Mismo patrón que sales_flow
+     
     while task_code == 0:
         # 1) Extract CSV
         code_01, msg_01, df = extract_csv(str(SOURCE_PATH), ";")

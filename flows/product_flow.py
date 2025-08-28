@@ -62,18 +62,18 @@ def product_flow(settings: dict) -> pd.DataFrame:
         code_03, msg_03 = check_unique(df, TABLE_PK)
         task_code, task_msg = code_03, msg_03
         logger.info(msg_03)
-        if task_code != 0:
+        if task_code > 0:
             break
 
-        # si hay duplicados, fuerza renombrado
-        if "dup" in msg_03.lower():  # tu lógica para detectar necesidad
+        # 4) si hay duplicados, fuerza renombrado
+        if task_code == -1:  
             code_04, msg_04, df = transform_col_unique(df, TABLE_PK)
             task_code, task_msg = code_04, msg_04
             logger.info(msg_04)
             if task_code != 0:
                 break
 
-        # 4) Check datatypes si corresponde
+        # 5) Check datatypes si corresponde
         if QUALITY:
             code_05, msg_05, df = check_datatypes(df, QUALITY)
             task_code, task_msg = code_05, msg_05
@@ -83,7 +83,7 @@ def product_flow(settings: dict) -> pd.DataFrame:
         else:
             logger.warning("⚠️ No hay 'Quality' en settings; omitiendo check_datatypes.")
 
-        # 5) Conectar DuckDB
+        # 6) Conectar DuckDB
         code_06, msg_06, con = connect_cloud_db()
         task_code, task_msg = code_06, msg_06
         logger.info(msg_06)
